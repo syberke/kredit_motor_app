@@ -2,66 +2,36 @@
 
 import { updateStatus } from "@/app/actions/admin";
 import { useTransition } from "react";
+import { useRouter } from "next/navigation";
 
 export default function ActionButtons({ id }: { id: string }) {
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
+
+  const handle = (status: "approved" | "rejected") => {
+    startTransition(async () => {
+      await updateStatus(id, status);
+      router.refresh();
+    });
+  };
 
   return (
     <div className="flex gap-2">
       <button
         disabled={pending}
-        onClick={() =>
-          startTransition(() => updateStatus(id, "approved"))
-        }
+        onClick={() => handle("approved")}
+        className="bg-green-500 text-white px-2 py-1 rounded"
       >
         Approve
       </button>
 
       <button
         disabled={pending}
-        onClick={() =>
-          startTransition(() => updateStatus(id, "rejected"))
-        }
+        onClick={() => handle("rejected")}
+        className="bg-red-500 text-white px-2 py-1 rounded"
       >
         Reject
       </button>
     </div>
   );
-}
-
-export async function markAsPaid(id: string) {
-  const supabase = createServerClient(...);
-
-  await supabase
-    .from("payments")
-    .update({
-      status: "paid",
-      paid_at: new Date().toISOString(),
-    })
-    .eq("id", id);
-}
-
-import { generatePayments } from "./payment";
-
-export async function updateStatus(id: string, status: string) {
-  const supabase = createServerClient(...);
-
-  const { data } = await supabase
-    .from("credit_applications")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  await supabase
-    .from("credit_applications")
-    .update({ status })
-    .eq("id", id);
-
-  if (status === "approved") {
-    await generatePayments(
-      id,
-      data.installment,
-      data.tenor
-    );
-  }
 }

@@ -19,7 +19,7 @@ import {
     FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-
+import { supabase } from "@/lib/supabase-browser";
 export default function AuthForm() {
   const [isLogin, setIsLogin] = useState(true);
   const router = useRouter();
@@ -37,22 +37,36 @@ export default function AuthForm() {
     if (isLogin) {
       await login(values.email, values.password);
       toast.success("Login berhasil");
-
-      router.replace("/dashboard");
-      router.refresh();
     } else {
-     
       await register(values.email, values.password);
-
-    
       await login(values.email, values.password);
-
       toast.success("Akun berhasil dibuat");
-
-
-      router.replace("/dashboard");
-      router.refresh();
     }
+
+    // 🔥 ambil user
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) throw new Error("User tidak ditemukan");
+
+    // 🔥 ambil role dari profiles
+    const { data: profile, error } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (error) throw new Error(error.message);
+
+    // 🔥 redirect berdasarkan role
+    if (profile.role === "admin") {
+      router.replace("/admin");
+    } else {
+      router.replace("/dashboard");
+    }
+
+    router.refresh();
   } catch (err: unknown) {
     if (err instanceof Error) {
       toast.error(err.message);

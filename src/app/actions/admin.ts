@@ -14,23 +14,15 @@ export async function updateStatus(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
-      cookies: {
-        get: (name: string) => cookieStore.get(name)?.value,
-        set: (name: string, value: string, options) =>
-          cookieStore.set({ name, value, ...options }),
-        remove: (name: string, options) =>
-          cookieStore.set({ name, value: "", ...options }),
-      },
+      cookies: cookieStore,
     }
   );
 
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from("credit_applications")
     .select("*")
     .eq("id", id)
     .single();
-
-  if (error) throw new Error(error.message);
 
   await supabase
     .from("credit_applications")

@@ -33,9 +33,7 @@ export default function AdminList() {
         <Card key={item.id}>
           <CardContent className="p-4 space-y-2">
             <div className="flex justify-between">
-              <p className="font-medium">
-                Rp {item.price.toLocaleString("id-ID")}
-              </p>
+              <p>Rp {item.price.toLocaleString("id-ID")}</p>
               <StatusBadge status={item.status} />
             </div>
 
@@ -45,35 +43,9 @@ export default function AdminList() {
               Cicilan: Rp {item.installment.toLocaleString("id-ID")}
             </p>
 
-            {/* 🔥 Action */}
             <ActionButtons id={item.id} />
           </CardContent>
         </Card>
-      ))}
-    </div>
-  );
-}
-"use client";
-
-import { useEffect, useState } from "react";
-import { getPayments } from "../services/payment.service";
-
-export default function PaymentList({ appId }: { appId: string }) {
-  const [data, setData] = useState<any[]>([]);
-
-  useEffect(() => {
-    getPayments(appId).then(setData);
-  }, [appId]);
-
-  return (
-    <div>
-      {data.map((p) => (
-        <div key={p.id} className="border p-2 mb-2">
-          <p>Cicilan ke-{p.installment_number}</p>
-          <p>Rp {p.amount}</p>
-          <p>Jatuh tempo: {p.due_date}</p>
-          <p>Status: {p.status}</p>
-        </div>
       ))}
     </div>
   );

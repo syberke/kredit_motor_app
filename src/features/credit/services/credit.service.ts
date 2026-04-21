@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabase-browser";
 import { SimulationResult,CreditApplication } from "../types/credit";
-
+import { calculateScore, getDecision } from "../utils/scoring";
 export const createCreditApplication = async (
   input: {
     price: number;
@@ -61,3 +61,22 @@ export const getPayments = async (applicationId: string) => {
   if (error) throw new Error(error.message);
   return data;
 };
+
+const score = calculateScore({
+  income: input.income,
+  price: input.price,
+  dp: input.dp,
+  tenor: input.tenor,
+});
+
+const status = getDecision(score);
+
+const { error } = await supabase
+  .from("credit_applications")
+  .insert({
+    user_id: user.id,
+    ...input,
+    ...result,
+    score,
+    status,
+  });
