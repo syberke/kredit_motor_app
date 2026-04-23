@@ -12,8 +12,22 @@ export async function createTransaction(
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const orderId = `${paymentId}-${Date.now()}`;
+  const orderId = `INV-${paymentId}-${Date.now()}`;
 
+  // ✅ 1. simpan dulu ke DB (ANTI RACE CONDITION)
+  const { error: updateError } = await supabase
+    .from("payments")
+    .update({
+      midtrans_order_id: orderId,
+      status: "pending",
+    })
+    .eq("id", paymentId);
+
+  if (updateError) {
+    throw new Error("Gagal update order_id");
+  }
+
+  // ✅ 2. create midtrans transaction
   const snap = new midtransClient.Snap({
     isProduction: false,
     serverKey: process.env.MIDTRANS_SERVER_KEY!,
@@ -26,19 +40,13 @@ export async function createTransaction(
     },
   });
 
-  const { data, error } = await supabase
+  // ✅ optional: simpan token
+  await supabase
     .from("payments")
     .update({
-      midtrans_order_id: orderId,
+      snap_token: transaction.token,
     })
-    .eq("id", paymentId)
-    .select();
-
-  console.log("UPDATE RESULT:", data, error);
-
-  if (error || !data || data.length === 0) {
-    throw new Error("Gagal update payment");
-  }
+    .eq("id", paymentId);
 
   return transaction.token;
 }
