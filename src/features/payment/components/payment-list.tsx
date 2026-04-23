@@ -20,9 +20,28 @@ export default function PaymentList({ appId }: { appId: string }) {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => {
-    fetchData();
-  }, [appId]);
+useEffect(() => {
+  let isMounted = true;
+
+  (async () => {
+    try {
+      const res = await getPayments(appId);
+      if (isMounted) {
+        setData(res);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      if (isMounted) {
+        setLoading(false);
+      }
+    }
+  })();
+
+  return () => {
+    isMounted = false;
+  };
+}, [appId]);
 
   const handleDownload = async (payment: Payment) => {
     const pdfBytes = await generateInvoice({
@@ -50,15 +69,17 @@ export default function PaymentList({ appId }: { appId: string }) {
       );
 
       window.snap.pay(token, {
-        onSuccess: async () => {
-          // ✅ FIX UTAMA: langsung update status tanpa tunggu webhook
-          try {
-            await markAsPaidById(payment.id);
-            toast.success(`Cicilan ke-${payment.installment_number} berhasil dibayar!`);
-            fetchData(); // refresh list tanpa reload halaman
-          } catch {
-            toast.error("Pembayaran sukses tapi gagal update status, hubungi admin.");
-          }
+        onSuccess: () => {
+          (async () => {
+            try {
+              await markAsPaidById(payment.id);
+              toast.success(`Cicilan ke-${payment.installment_number} berhasil dibayar!`);
+              setLoading(true);
+              fetchData();
+            } catch {
+              toast.error("Pembayaran sukses tapi gagal update status, hubungi admin.");
+            }
+          })();
         },
         onPending: () => {
           toast.info("Menunggu konfirmasi pembayaran...");

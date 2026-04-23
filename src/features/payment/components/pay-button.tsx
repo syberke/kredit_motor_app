@@ -14,13 +14,17 @@ export default function PayButton({
 
    
     window.snap.pay(token, {
-      onSuccess: function () {
-        alert("Pembayaran berhasil!");
+      onSuccess: () => {
+        (async () => {
+          const { markAsPaidById } = await import("@/app/actions/payment");
+          await markAsPaidById(paymentId);
+          alert("Pembayaran berhasil!");
+        })();
       },
-      onPending: function () {
+      onPending: () => {
         alert("Menunggu pembayaran...");
       },
-      onError: function () {
+      onError: () => {
         alert("Pembayaran gagal");
       },
     });

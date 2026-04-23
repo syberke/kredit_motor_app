@@ -48,8 +48,21 @@ export default function PaymentList({ appId }: { appId: string }) {
 
       window.snap.pay(token, {
         onSuccess: () => {
-          alert("Pembayaran berhasil!");
-          location.reload();
+          (async () => {
+            const { markAsPaidById } = await import("@/app/actions/payment");
+            try {
+              await markAsPaidById(payment.id);
+              setData((prev) =>
+                prev.map((p) =>
+                  p.id === payment.id
+                    ? { ...p, status: "paid" as const, paid_at: new Date().toISOString() }
+                    : p
+                )
+              );
+            } catch {
+              alert("Pembayaran sukses tapi gagal update status.");
+            }
+          })();
         },
         onPending: () => {
           alert("Menunggu pembayaran...");
