@@ -26,18 +26,31 @@ export async function GET() {
   }
 
   for (const p of payments || []) {
-    // 🔥 ambil user
-    const { data: app } = await supabase
-      .from("credit_applications")
-      .select("user_id")
-      .eq("id", p.application_id)
-      .single();
+   const { data: app, error: appError } = await supabase
+  .from("credit_applications")
+  .select("user_id")
+  .eq("id", p.application_id)
+  .single();
 
-    const { data: user } = await supabase.auth.admin.getUserById(
-      app.user_id
-    );
+if (appError || !app) {
+  console.error("❌ Application tidak ditemukan:", appError);
+  continue; // lanjut ke cicilan berikutnya
+}
 
-    const email = user.user.email;
+const { data: userRes, error: userError } =
+  await supabase.auth.admin.getUserById(app.user_id);
+
+if (userError || !userRes?.user) {
+  console.error("❌ User tidak ditemukan:", userError);
+  continue;
+}
+
+const email = userRes.user.email;
+
+if (!email) {
+  console.error("❌ Email kosong");
+  continue;
+}
 
     // 🔥 kirim email
     await resend.emails.send({
