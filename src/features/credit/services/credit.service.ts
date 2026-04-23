@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabase-browser";
 import { SimulationResult, CreditApplication, CreditInput } from "../types/credit";
 import { calculateScore, getDecision } from "../utils/scoring";
-
+import { generatePayments } from "@/app/actions/payment";
 export const createCreditApplication = async (
   input: CreditInput,
   result: SimulationResult
@@ -12,7 +12,6 @@ export const createCreditApplication = async (
 
   if (!user) throw new Error("User tidak ditemukan, silakan login kembali");
 
-  // Hitung score jika income tersedia
   let score: number | undefined;
   let status: "pending" | "approved" | "rejected" = "pending";
 
@@ -26,20 +25,33 @@ export const createCreditApplication = async (
     status = getDecision(score);
   }
 
-  const { error } = await supabase.from("credit_applications").insert({
-    user_id: user.id,
-    price: input.price,
-    dp: input.dp,
-    tenor: input.tenor,
-    interest: input.interest,
-    installment: result.installment,
-    total_payment: result.totalPayment,
-    total_interest: result.totalInterest,
-    ...(score !== undefined && { score }),
-    status,
-  });
+  const { data: application, error } = await supabase
+    .from("credit_applications")
+    .insert({
+      user_id: user.id,
+      price: input.price,
+      dp: input.dp,
+      tenor: input.tenor,
+      interest: input.interest,
+      installment: result.installment,
+      total_payment: result.totalPayment,
+      total_interest: result.totalInterest,
+      ...(score !== undefined && { score }),
+      status,
+    })
+    .select()
+    .single();
 
-  if (error) throw new Error(error.message);
+  if (error || !application) throw new Error(error?.message);
+
+  // 🔥 FIX UTAMA
+  if (status === "approved") {
+    await generatePayments(
+      application.id,
+      application.installment,
+      application.tenor
+    );
+  }
 };
 
 export const getUserApplications = async (): Promise<CreditApplication[]> => {

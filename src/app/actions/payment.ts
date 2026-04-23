@@ -1,27 +1,17 @@
 "use server";
 
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function generatePayments(
   applicationId: string,
   installment: number,
   tenor: number
 ) {
-  const cookieStore = await cookies();
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      cookies: {
-        get: (name) => cookieStore.get(name)?.value,
-        set: () => {},
-        remove: () => {},
-      },
-    }
-  );
-
   const today = new Date();
 
   const payments = Array.from({ length: tenor }, (_, i) => {
@@ -37,26 +27,17 @@ export async function generatePayments(
     };
   });
 
-  const { error } = await supabase.from("payments").insert(payments);
+  const { data, error } = await supabase
+    .from("payments")
+    .insert(payments)
+    .select();
+
+  console.log("GENERATE:", data, error);
 
   if (error) throw new Error(error.message);
 }
 
 export async function markAsPaid(id: string) {
-  const cookieStore = await cookies();
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      cookies: {
-        get: (name) => cookieStore.get(name)?.value,
-        set: () => {},
-        remove: () => {},
-      },
-    }
-  );
-
   const { error } = await supabase
     .from("payments")
     .update({

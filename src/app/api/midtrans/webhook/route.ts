@@ -34,18 +34,12 @@ export async function POST(req: Request) {
       );
     }
 
-    // 🔗 KONEK SUPABASE (SERVICE ROLE)
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // 🔥 AMBIL ID ASLI DARI ORDER_ID
-    const paymentId = order_id.split("-")[0];
-
-    console.log("🆔 Payment ID:", paymentId);
-
-    // 🎯 HANDLE STATUS
+    // 🔥 LANGSUNG PAKAI midtrans_order_id
     let newStatus: "paid" | "pending" | "failed" | null = null;
 
     if (
@@ -64,23 +58,23 @@ export async function POST(req: Request) {
     }
 
     if (!newStatus) {
-      console.log("⚠️ Status tidak diproses:", transaction_status);
+      console.log("⚠️ Status diabaikan:", transaction_status);
       return NextResponse.json({ message: "Ignored" });
     }
 
-    // 🗄️ UPDATE PAYMENT
-    const { data: payment, error: paymentError } = await supabase
+    // 🔥 UPDATE BERDASARKAN midtrans_order_id
+    const { data: payment, error } = await supabase
       .from("payments")
       .update({
         status: newStatus,
         paid_at: newStatus === "paid" ? new Date().toISOString() : null,
       })
-      .eq("id", paymentId) // 🔥 FIX UTAMA
+      .eq("midtrans_order_id", order_id) // 🔥 FIX UTAMA
       .select()
       .single();
 
-    if (paymentError || !payment) {
-      console.error("❌ Payment tidak ditemukan:", paymentError);
+    if (error || !payment) {
+      console.error("❌ Payment tidak ditemukan:", error);
       return NextResponse.json(
         { message: "Payment not found" },
         { status: 404 }
@@ -89,7 +83,7 @@ export async function POST(req: Request) {
 
     console.log("✅ Payment updated:", payment);
 
-    // 📧 KIRIM EMAIL JIKA BERHASIL
+    // 📧 EMAIL
     if (newStatus === "paid") {
       const { data: application } = await supabase
         .from("credit_applications")
@@ -98,10 +92,10 @@ export async function POST(req: Request) {
         .single();
 
       if (application) {
-        const { data: userResponse } =
+        const { data: userRes } =
           await supabase.auth.admin.getUserById(application.user_id);
 
-        const email = userResponse?.user?.email;
+        const email = userRes?.user?.email;
 
         if (email) {
           await resend.emails.send({
@@ -109,31 +103,20 @@ export async function POST(req: Request) {
             to: email,
             subject: "Pembayaran Berhasil ✅",
             html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #16a34a;">Pembayaran Berhasil!</h2>
-                <p>Cicilan ke-<strong>${payment.installment_number}</strong> berhasil dibayar.</p>
-                <p>Jumlah: <strong>Rp ${Number(
-                  payment.amount
-                ).toLocaleString("id-ID")}</strong></p>
-                <p>Terima kasih telah menggunakan Kredit Motor Online.</p>
-                <hr />
-                <p style="color: #6b7280; font-size: 12px;">
-                  Email ini dikirim otomatis.
-                </p>
-              </div>
+              <h2>Pembayaran Berhasil</h2>
+              <p>Cicilan ke-${payment.installment_number} sudah dibayar</p>
+              <p>Rp ${Number(payment.amount).toLocaleString("id-ID")}</p>
             `,
           });
-
-          console.log("📧 Email terkirim ke:", email);
         }
       }
     }
 
     return NextResponse.json({ message: "OK" });
-  } catch (error) {
-    console.error("🔥 Webhook error:", error);
+  } catch (err) {
+    console.error("🔥 Webhook error:", err);
     return NextResponse.json(
-      { message: "Internal server error" },
+      { message: "Internal error" },
       { status: 500 }
     );
   }
