@@ -32,9 +32,8 @@ export async function generatePayments(
     .insert(payments)
     .select();
 
-  console.log("GENERATE:", data, error);
-
   if (error) throw new Error(error.message);
+  return data;
 }
 
 export async function markAsPaid(id: string) {
@@ -45,6 +44,19 @@ export async function markAsPaid(id: string) {
       paid_at: new Date().toISOString(),
     })
     .eq("id", id);
+
+  if (error) throw new Error(error.message);
+}
+
+// ✅ BARU: Update by payment ID langsung (dipanggil dari onSuccess snap)
+export async function markAsPaidById(paymentId: string) {
+  const { error } = await supabase
+    .from("payments")
+    .update({
+      status: "paid",
+      paid_at: new Date().toISOString(),
+    })
+    .eq("id", paymentId);
 
   if (error) throw new Error(error.message);
 }

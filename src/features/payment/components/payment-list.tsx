@@ -5,20 +5,25 @@ import { getPayments, Payment } from "../services/payment.service";
 import { Button } from "@/components/ui/button";
 import { generateInvoice } from "../services/invoice.service";
 import { createTransaction } from "@/app/actions/midtrans";
+import { markAsPaidById } from "@/app/actions/payment"; // ✅ import baru
+import { toast } from "sonner";
 
 export default function PaymentList({ appId }: { appId: string }) {
   const [data, setData] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [payingId, setPayingId] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchData = () => {
     getPayments(appId)
       .then(setData)
       .catch(console.error)
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchData();
   }, [appId]);
 
-  // DOWNLOAD INVOICE
   const handleDownload = async (payment: Payment) => {
     const pdfBytes = await generateInvoice({
       id: payment.id,
@@ -35,7 +40,6 @@ export default function PaymentList({ appId }: { appId: string }) {
     window.open(url);
   };
 
-  // PAY
   const handlePay = async (payment: Payment) => {
     try {
       setPayingId(payment.id);
@@ -45,19 +49,27 @@ export default function PaymentList({ appId }: { appId: string }) {
         Math.round(payment.amount)
       );
 
-    
       window.snap.pay(token, {
-        onSuccess: () => {
-          alert("Pembayaran berhasil!");
-          location.reload();
+        onSuccess: async () => {
+          // ✅ FIX UTAMA: langsung update status tanpa tunggu webhook
+          try {
+            await markAsPaidById(payment.id);
+            toast.success(`Cicilan ke-${payment.installment_number} berhasil dibayar!`);
+            fetchData(); // refresh list tanpa reload halaman
+          } catch {
+            toast.error("Pembayaran sukses tapi gagal update status, hubungi admin.");
+          }
         },
         onPending: () => {
-          alert("Menunggu pembayaran...");
+          toast.info("Menunggu konfirmasi pembayaran...");
         },
         onError: () => {
-          alert("Pembayaran gagal");
+          toast.error("Pembayaran gagal, coba lagi.");
         },
       });
+    } catch (err) {
+      toast.error("Gagal membuat transaksi");
+      console.error(err);
     } finally {
       setPayingId(null);
     }
@@ -79,13 +91,7 @@ export default function PaymentList({ appId }: { appId: string }) {
             </p>
             <p className="text-xs text-muted-foreground">
               Status:{" "}
-              <span
-                className={
-                  p.status === "paid"
-                    ? "text-green-600"
-                    : "text-red-500"
-                }
-              >
+              <span className={p.status === "paid" ? "text-green-600" : "text-red-500"}>
                 {p.status}
               </span>
             </p>
@@ -99,10 +105,7 @@ export default function PaymentList({ appId }: { appId: string }) {
               {payingId === p.id ? "Memproses..." : "Bayar"}
             </Button>
           ) : (
-            <Button
-              variant="outline"
-              onClick={() => handleDownload(p)}
-            >
+            <Button variant="outline" onClick={() => handleDownload(p)}>
               Invoice
             </Button>
           )}
@@ -110,4 +113,4 @@ export default function PaymentList({ appId }: { appId: string }) {
       ))}
     </div>
   );
-}
+} 
