@@ -2,36 +2,52 @@
 
 import { updateStatus } from "@/app/actions/admin";
 import { useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
-export default function ActionButtons({ id }: { id: string }) {
+type ActionButtonsProps = {
+  id: string;
+  onSuccess?: () => void;
+};
+
+export default function ActionButtons({ id, onSuccess }: ActionButtonsProps) {
   const [pending, startTransition] = useTransition();
-  const router = useRouter();
 
   const handle = (status: "approved" | "rejected") => {
     startTransition(async () => {
-      await updateStatus(id, status);
-      router.refresh();
+      try {
+        await updateStatus(id, status);
+        toast.success(
+          status === "approved"
+            ? "Pengajuan berhasil disetujui"
+            : "Pengajuan ditolak"
+        );
+        onSuccess?.();
+      } catch {
+        toast.error("Gagal memperbarui status");
+      }
     });
   };
 
   return (
     <div className="flex gap-2">
-      <button
+      <Button
+        size="sm"
         disabled={pending}
         onClick={() => handle("approved")}
-        className="bg-green-500 text-white px-2 py-1 rounded"
+        className="bg-green-600 hover:bg-green-700"
       >
-        Approve
-      </button>
+        {pending ? "Memproses..." : "Setujui"}
+      </Button>
 
-      <button
+      <Button
+        size="sm"
+        variant="destructive"
         disabled={pending}
         onClick={() => handle("rejected")}
-        className="bg-red-500 text-white px-2 py-1 rounded"
       >
-        Reject
-      </button>
+        Tolak
+      </Button>
     </div>
   );
 }

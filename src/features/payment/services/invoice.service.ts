@@ -4,7 +4,7 @@ export const generateInvoice = async (payment: {
   id: string;
   amount: number;
   installment_number: number;
-  paid_at: string;
+ paid_at: string | null;
 }) => {
   const pdfDoc = await PDFDocument.create();
   const page = pdfDoc.addPage([400, 600]);

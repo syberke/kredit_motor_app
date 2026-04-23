@@ -1,24 +1,35 @@
 "use server";
 
 import midtransClient from "midtrans-client";
+import { createServerSupabase } from "@/lib/supabase-server";
 
 export async function createTransaction(
-    orderId: string,
-    amount: number
+  paymentId: string,
+  amount: number
 ) {
-    const snap = new midtransClient.Snap({
-        isProduction: false, // 🔥 sandbox
-        serverKey: process.env.MIDTRANS_SERVER_KEY!,
-    });
+  const supabase = await createServerSupabase();
 
-    const parameter = {
-        transaction_details: {
-            order_id: orderId,
-            gross_amount: amount,
-        },
-    };
+  const orderId = `${paymentId}-${Date.now()}`; // 🔥 unik
 
-    const transaction = await snap.createTransaction(parameter);
+  const snap = new midtransClient.Snap({
+    isProduction: false,
+    serverKey: process.env.MIDTRANS_SERVER_KEY!,
+  });
 
-    return transaction.token;
+const parameter = {
+  transaction_details: {
+    order_id: orderId,
+    gross_amount: Math.round(amount), // ✔ fix
+  },
+};
+
+  const transaction = await snap.createTransaction(parameter);
+
+  // 🔥 simpan order_id ke DB
+  await supabase
+    .from("payments")
+    .update({ midtrans_order_id: orderId })
+    .eq("id", paymentId);
+
+  return transaction.token;
 }

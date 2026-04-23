@@ -14,7 +14,11 @@ export async function generatePayments(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
-      cookies: cookieStore,
+      cookies: {
+        get: (name) => cookieStore.get(name)?.value,
+        set: () => {},
+        remove: () => {},
+      },
     }
   );
 
@@ -27,8 +31,9 @@ export async function generatePayments(
     return {
       application_id: applicationId,
       installment_number: i + 1,
-      amount: installment,
+      amount: Math.round(installment),
       due_date: dueDate.toISOString().split("T")[0],
+      status: "unpaid",
     };
   });
 
@@ -44,15 +49,21 @@ export async function markAsPaid(id: string) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
-      cookies: cookieStore,
+      cookies: {
+        get: (name) => cookieStore.get(name)?.value,
+        set: () => {},
+        remove: () => {},
+      },
     }
   );
 
-  await supabase
+  const { error } = await supabase
     .from("payments")
     .update({
       status: "paid",
       paid_at: new Date().toISOString(),
     })
     .eq("id", id);
+
+  if (error) throw new Error(error.message);
 }

@@ -14,20 +14,28 @@ export async function updateStatus(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
-      cookies: cookieStore,
+      cookies: {
+        get: (name) => cookieStore.get(name)?.value,
+        set: () => {},
+        remove: () => {},
+      },
     }
   );
 
-  const { data } = await supabase
+  const { data, error: fetchError } = await supabase
     .from("credit_applications")
     .select("*")
     .eq("id", id)
     .single();
 
-  await supabase
+  if (fetchError || !data) throw new Error("Pengajuan tidak ditemukan");
+
+  const { error: updateError } = await supabase
     .from("credit_applications")
     .update({ status })
     .eq("id", id);
+
+  if (updateError) throw new Error(updateError.message);
 
   if (status === "approved") {
     await generatePayments(id, data.installment, data.tenor);
