@@ -12,7 +12,7 @@ export async function createTransaction(
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const orderId = `INV-${paymentId}-${Date.now()}`;
+const orderId = `INV-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
   // ✅ 1. simpan dulu ke DB (ANTI RACE CONDITION)
   const { error: updateError } = await supabase

@@ -6,7 +6,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createServerSupabase(); // ✅ WAJIB await
+  const supabase = await createServerSupabase(); 
 
   const {
     data: { session },

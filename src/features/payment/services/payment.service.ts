@@ -5,8 +5,10 @@ export type Payment = {
   application_id: string;
   installment_number: number;
   amount: number;
-  due_date: string;
-  status: "paid" | "unpaid";
+  status: "unpaid" | "pending" | "paid" | "failed";
+  midtrans_order_id: string | null;
+  order_id: string | null;
+  snap_token?: string | null;
   paid_at: string | null;
 };
 

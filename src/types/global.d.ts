@@ -2,10 +2,11 @@ interface Window {
   snap: {
     pay: (
       token: string,
-      options: {
+      options?: {
         onSuccess?: () => void;
         onPending?: () => void;
         onError?: () => void;
+        onClose?: () => void;
       }
     ) => void;
   };

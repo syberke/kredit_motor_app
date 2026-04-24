@@ -103,22 +103,24 @@ export default function PaymentList({ appId }: { appId: string }) {
               </span>
             </p>
           </div>
-
-          {p.status === "unpaid" ? (
-            <Button
-              disabled={payingId === p.id}
-              onClick={() => handlePay(p)}
-            >
-              {payingId === p.id ? "Memproses..." : "Bayar"}
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              onClick={() => handleDownload(p)}
-            >
-              Invoice
-            </Button>
-          )}
+{p.status === "pending" ? (
+  <Button
+    onClick={() => window.snap.pay(p.snap_token!)}
+  >
+    Lanjutkan Pembayaran
+  </Button>
+) : p.status === "unpaid" || p.status === "failed" ? (
+  <Button
+    disabled={payingId === p.id}
+    onClick={() => handlePay(p)}
+  >
+    {payingId === p.id ? "Memproses..." : "Bayar"}
+  </Button>
+) : (
+  <Button variant="outline" onClick={() => handleDownload(p)}>
+    Invoice
+  </Button>
+)}
         </div>
       ))}
     </div>
